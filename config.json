@@ -1,0 +1,15 @@
+{
+  "start_hour": 6,
+  "start_min": 0,
+  "end_hour": 17,
+  "end_min": 0,
+  "interval": 30,
+  "alert_text": "一元购有库存啦，快去下单！",
+  "selected_id": "feike_2000",
+  "sound_mode": "wav",
+  "music_gap_sec": 5,
+  "music_duration_min": 1,
+  "selected_ids": [
+    "feike_2000"
+  ]
+}
