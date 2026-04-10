@@ -181,8 +181,10 @@ class MonitorWindow(QWidget):
         mode = self.cfg.get("sound_mode", "wav")
         try:
             if mode == "wav":
-                if os.path.exists(WAV_PATH):
-                    winsound.PlaySound(WAV_PATH, winsound.SND_FILENAME | winsound.SND_ASYNC)
+                # 使用用户指定的WAV路径，优先从配置读取
+                wav_file = self.cfg.get("wav_path", WAV_PATH)
+                if wav_file and os.path.exists(wav_file):
+                    winsound.PlaySound(wav_file, winsound.SND_FILENAME | winsound.SND_ASYNC)
                 else:
                     # WAV文件不存在，自动切换到TTS并提示
                     self._log("[提示] WAV文件不存在，已自动切换到TTS语音播报")
@@ -300,15 +302,37 @@ class MonitorWindow(QWidget):
         self.spin_interval.setSuffix(" 秒")
         f_layout.addRow("检测间隔：", self.spin_interval)
 
-        # 声音模式
-        sound_hbox = QHBoxLayout()
+        # 声音模式选择
         self.combo_sound_mode = QComboBox()
-        self.combo_sound_mode.addItems(["🔔 警报音乐（WAV，可选）", "🔉 TTS 语音播报"])
+        self.combo_sound_mode.addItems(["🔔 警报音乐（WAV）", "🔉 TTS 语音播报"])
         self.combo_sound_mode.setCurrentIndex(0)
         self.combo_sound_mode.currentIndexChanged.connect(self._on_sound_mode_changed)
-        sound_hbox.addWidget(self.combo_sound_mode)
-        sound_hbox.addStretch()
-        f_layout.addRow("声音模式：", sound_hbox)
+        f_layout.addRow("声音模式：", self.combo_sound_mode)
+
+        # WAV文件路径选择（WAV模式显示）
+        wav_hbox = QHBoxLayout()
+        self.edit_wav_path = QLineEdit()
+        self.edit_wav_path.setPlaceholderText("默认：程序目录下的 alert.wav")
+        self.edit_wav_path.setText(WAV_PATH if os.path.exists(WAV_PATH) else "")
+        self.edit_wav_path.textChanged.connect(lambda t: self.cfg.update({"wav_path": t}))
+        self.btn_browse = QPushButton("浏览")
+        self.btn_browse.setStyleSheet("padding:2px 8px;")
+        self.btn_browse.clicked.connect(self._browse_wav)
+        wav_hbox.addWidget(self.edit_wav_path)
+        wav_hbox.addWidget(self.btn_browse)
+        self.wav_row_widget = QWidget()
+        self.wav_row_widget.setLayout(wav_hbox)
+        self.wav_row_label = QLabel("WAV 文件：")
+        f_layout.addRow(self.wav_row_label, self.wav_row_widget)
+
+        # TTS 语音内容（TTS模式显示）
+        self.edit_sound = QLineEdit()
+        self.edit_sound.setPlaceholderText("有货时的语音播报内容...")
+        self.tts_row_label = QLabel("TTS 内容：")
+        f_layout.addRow(self.tts_row_label, self.edit_sound)
+        # 默认WAV模式：隐藏TTS行
+        self.edit_sound.setVisible(False)
+        self.tts_row_label.setVisible(False)
 
         # 播报间隔
         self.combo_gap = QComboBox()
@@ -321,11 +345,6 @@ class MonitorWindow(QWidget):
         for i in range(1, 6):
             self.combo_duration.addItem(f"{i} 分钟", i)
         f_layout.addRow("连续时长：", self.combo_duration)
-
-        # 语音内容（TTS 模式下显示）
-        self.edit_sound = QLineEdit()
-        self.edit_sound.setPlaceholderText("有货时的语音播报内容...")
-        f_layout.addRow("TTS 内容：", self.edit_sound)
 
         # 按钮行
         self.btn_toggle = QPushButton("▶ 开始监控")
@@ -368,10 +387,22 @@ class MonitorWindow(QWidget):
     def _on_sound_mode_changed(self, index):
         mode = "wav" if index == 0 else "tts"
         self.cfg["sound_mode"] = mode
-        self.edit_sound.setVisible(mode == "tts")
-        # 隐藏/显示 TTS 行标签
-        self._find_tts_label().setVisible(mode == "tts")
-        self._log(f"声音模式切换为：{'WAV 警报音' if mode == 'wav' else 'TTS 语音播报'}")
+        is_wav = (mode == "wav")
+        self.wav_row_widget.setVisible(is_wav)
+        self.wav_row_label.setVisible(is_wav)
+        self.edit_sound.setVisible(not is_wav)
+        self.tts_row_label.setVisible(not is_wav)
+        self._log(f"声音模式切换为：{'WAV 警报音' if is_wav else 'TTS 语音播报'}")
+
+    def _browse_wav(self):
+        from PySide6.QtWidgets import QFileDialog
+        path, _ = QFileDialog.getOpenFileName(
+            self, "选择WAV音频文件", "",
+            "音频文件 (*.wav);;所有文件 (*.*)"
+        )
+        if path:
+            self.edit_wav_path.setText(path)
+            self.cfg["wav_path"] = path
 
     def _find_tts_label(self):
         # 通过 layout 找 TTS 行标签
@@ -410,10 +441,14 @@ class MonitorWindow(QWidget):
         # 声音模式
         mode = self.cfg.get("sound_mode", "wav")
         self.combo_sound_mode.setCurrentIndex(0 if mode == "wav" else 1)
-        self.edit_sound.setVisible(mode == "tts")
-        tts_label = self._find_tts_label()
-        if tts_label:
-            tts_label.setVisible(mode == "tts")
+        is_wav = (mode == "wav")
+        self.wav_row_widget.setVisible(is_wav)
+        self.wav_row_label.setVisible(is_wav)
+        self.edit_sound.setVisible(not is_wav)
+        self.tts_row_label.setVisible(not is_wav)
+        # WAV路径
+        wav_path = self.cfg.get("wav_path", WAV_PATH)
+        self.edit_wav_path.setText(wav_path if os.path.exists(wav_path) else "")
 
         # 播报间隔 & 连续时长
         gap = self.cfg.get("music_gap_sec", 2)
