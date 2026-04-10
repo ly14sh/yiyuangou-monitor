@@ -180,9 +180,14 @@ class MonitorWindow(QWidget):
             return
         mode = self.cfg.get("sound_mode", "wav")
         try:
-            if mode == "wav" and os.path.exists(WAV_PATH):
-                winsound.PlaySound(WAV_PATH, winsound.SND_FILENAME | winsound.SND_ASYNC)
-            else:
+            if mode == "wav":
+                if os.path.exists(WAV_PATH):
+                    winsound.PlaySound(WAV_PATH, winsound.SND_FILENAME | winsound.SND_ASYNC)
+                else:
+                    # WAV文件不存在，自动切换到TTS并提示
+                    self._log("[提示] WAV文件不存在，已自动切换到TTS语音播报")
+                    mode = "tts"
+            if mode == "tts":
                 # TTS：System.Speech（非阻塞执行，先终止旧进程避免重叠）
                 if self._tts_proc and self._tts_proc.poll() is None:
                     try:
@@ -298,7 +303,7 @@ class MonitorWindow(QWidget):
         # 声音模式
         sound_hbox = QHBoxLayout()
         self.combo_sound_mode = QComboBox()
-        self.combo_sound_mode.addItems(["🔔 警报音乐（WAV）", "🔉 TTS 语音播报"])
+        self.combo_sound_mode.addItems(["🔔 警报音乐（WAV，可选）", "🔉 TTS 语音播报"])
         self.combo_sound_mode.setCurrentIndex(0)
         self.combo_sound_mode.currentIndexChanged.connect(self._on_sound_mode_changed)
         sound_hbox.addWidget(self.combo_sound_mode)
