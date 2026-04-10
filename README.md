@@ -23,7 +23,7 @@
 
 ### 方法一：直接运行（推荐）
 
-1. 下载 [Releases](https://github.com/ly14sh/yiyuangou-monitor/releases) 中的 `一元购库存监控.exe`
+1. 下载 [Releases](https://github.com/ly14sh/yiyuangou-monitor/releases) 中的 `yiyuangou-monitor.exe`
 2. 双击运行即可，无需安装 Python
 
 ### 方法二：源码运行
